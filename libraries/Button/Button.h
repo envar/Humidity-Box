@@ -1,5 +1,6 @@
 // Set up buttons
-int oldkey=-1;
+int key = -1;
+int oldkey = -1;
 
 // Convert ADC value to key number
 int get_key(int input)

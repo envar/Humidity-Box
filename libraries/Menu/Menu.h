@@ -124,27 +124,27 @@ class Menu
 {
 private:
     static const int screen_len = 16;
-    Item * first_item;
-    Item * current_item; // where you are in the menu
     int item_counter;
-    void save_changes_dialog(int);
+    // void save_changes_dialog(int);
     bool is_empty;
     int selection;
 public:
     Menu();
     ~Menu();
-    void (*current_action)(int);
-    void (*last_action)(int);
+    Item * first_item;
+    Item * current_item; // where you are in the menu
+    //void (*current_action)(int);
+    //void (*last_action)(int);
     void add_item_down(Item * item); // Add item below the last created item
     void add_item_right(Item * item);
-    void navigate(int input);
-    void navigate_to_top();
-    void navigate_to(Item * item);
-    void select(char action);
-    void print_menu();
-    void change_current_action(void (*action)(int));
-    void change_last_action(void (*action)(int));
-    int get_selection();
+    //void navigate(int input);
+    //void navigate_to_top();
+    //void navigate_to(Item * item);
+    //void select(char action);
+    //void print_menu();
+    //void change_current_action(void (*action)(int));
+    //void change_last_action(void (*action)(int));
+    //int get_selection();
 };
 
 Menu::Menu()
@@ -154,11 +154,11 @@ Menu::Menu()
     is_empty = true;
 }
 
-Menu::~Menu() // TODO: need to make proper deconstuctor
+Menu::~Menu() 
 {
 }
 
-void Menu::add_item_down(Item * item) // TODO: Need to add functionality to add items to the left and right
+void Menu::add_item_down(Item * item) 
 {
     if (is_empty)
     {
@@ -192,6 +192,7 @@ void Menu::add_item_right(Item * item) // TODO: Add in catch if there are no ite
     item_counter++;
 }
 
+/*
 void Menu::navigate(int input=-1) 
 {
     switch (input)
@@ -306,4 +307,5 @@ int Menu::get_selection()
 {
     return selection;
 }
+*/
 
