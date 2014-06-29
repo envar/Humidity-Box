@@ -87,6 +87,7 @@ class Event_Handler
         bool is_empty();
         void add_event(Event * event);
         void remove_event(Event * event);
+        void remove_all_events();
 };
 
 Event_Handler::Event_Handler()
@@ -162,18 +163,29 @@ void Event_Handler::remove_event(Event * event)
     if(event->get_previous() == 0) // Check if this is the first event
     {
         event->get_next()->add_previous(0);
+        current_event = event->get_next();
     }
     else if ((event->get_previous() != 0) && (event->get_next() != 0)) // Check if event in middle
     {
         event->get_previous()->add_next(event->get_next());
         event->get_next()->add_previous(event->get_previous());
+        current_event = event->get_previous();
     }
     else if (event->get_next() == 0) // Check if event is the last event
     {
         event->get_previous()->add_next(0);
+        current_event = event->get_previous();
     }
 
     delete event;
     event_counter--;
+}
+
+void Event_Handler::remove_all_events()
+{
+    while (event_counter != 0)
+    {
+        remove_event(current_event);
+    }
 }
 

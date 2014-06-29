@@ -31,7 +31,7 @@ class Item
 
 Item::Item(const char * item_name)
 {
-    
+
     previous_item = 0;
     next_item = 0;
     parent_item = 0;
@@ -55,7 +55,7 @@ Item::~Item()
     {
         delete next_item;
     }
-    
+
     delete title;
 }
 
@@ -154,11 +154,11 @@ Menu::Menu()
     is_empty = true;
 }
 
-Menu::~Menu() 
+Menu::~Menu()
 {
 }
 
-void Menu::add_item_down(Item * item) 
+void Menu::add_item_down(Item * item)
 {
     if (is_empty)
     {
@@ -193,7 +193,7 @@ void Menu::add_item_right(Item * item) // TODO: Add in catch if there are no ite
 }
 
 /*
-void Menu::navigate(int input=-1) 
+void Menu::navigate(int input=-1)
 {
     switch (input)
     {
@@ -288,7 +288,7 @@ void Menu::save_changes_dialog(int input=-1)
         case 4: // Select Key
             lcd.clear();
             if (selection == 1) lcd.print("Changes saved");
-            else lcd.print("No changes made");       
+            else lcd.print("No changes made");
             last_action(9);
             change_current_action(last_action);
             break;
@@ -308,4 +308,3 @@ int Menu::get_selection()
     return selection;
 }
 */
-

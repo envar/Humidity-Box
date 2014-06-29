@@ -1,15 +1,31 @@
 #include "Arduino.h"
 #include "LiquidCrystal.h"
+#include "SD.h"
+// #include "Datalogger.h"
 #include "Menu.h"
 #include "Events.h"
 #include "DS1307RTC.h"
 #include "Time.h"
 #include "Wire.h"
-#include "math.h"
-#include "Button.h"
+#include "NESpad.h"
+#include "MemoryFree.h"
+#include "avr/pgmspace.h"
+
+// NINTENDO CONTROLLER
+NESpad nintendo = NESpad(A3, A2, A1);
+byte check_button()
+{
+    byte state = nintendo.buttons();
+    if (state & NES_A) return NES_A;
+    else if (state & NES_RIGHT) return NES_RIGHT;
+    else if (state & NES_UP) return NES_UP;
+    else if (state & NES_DOWN) return NES_DOWN;
+    else if (state & NES_LEFT) return NES_LEFT;
+    else return byte(-1);
+}
 
 // Set up LCD
-LiquidCrystal lcd(8, 13, 9, 4, 5, 6, 7);
+LiquidCrystal lcd(7, 6, 5, 4, 2, 1);
 byte left_arrow[8] = {
     0b00000,
     0b00100,
@@ -20,7 +36,6 @@ byte left_arrow[8] = {
     0b00000,
     0b00000,
 };
-
 
 // Addresses for sensors
 byte HIH6130_address = 0x27; // temperature humidity sensor address
@@ -34,41 +49,41 @@ float RH_sp = 0; // set point for humidity
 float RH_sp_new = 0;
 
 // Valve position
-int valve1_pin = 10;  // Dry stream;
-int valve1_level = 0; // this should be a percentage
-int valve1_sp = 0;    // 
-int valve2_pin = 11;  // Wet stream;
-int valve2_level = 0;
-int valve2_sp = 0;
+uint8_t valve1_pin = 3;  // Dry stream;
+uint8_t valve1_level = 0; // this should be a percentage
+uint8_t valve1_sp = 0;    // 
+uint8_t valve2_pin = 9;  // Wet stream;
+uint8_t valve2_level = 0;
+uint8_t valve2_sp = 0;
 
 void check_valves()
 {
-    int level;
+    uint8_t level;
 
     if (valve1_level != valve1_sp)
     {
-        level = map(valve1_sp, 0, 100, 0, 255);
+        level = map(valve1_level, 0, 100, 0, 255);
         analogWrite(valve1_pin, level);
         valve1_level = valve1_sp;
     }
     if (valve2_level != valve2_sp)
     {
-        level = map(valve2_sp, 0, 100, 0, 255);
+        level = map(valve2_level, 0, 100, 0, 255);
         analogWrite(valve2_pin, level);
         valve2_level = valve2_sp;
     }
 }
 
 // initiate actions: keeps track of action to be executed when a key is pressed
-void (*current_action)(int);
-void (*last_action)(int);
+void (*current_action)(uint8_t);
+void (*last_action)(uint8_t);
 
-void change_current_action(void (*action)(int))
+void change_current_action(void (*action)(byte))
 {
     current_action = action;
 }
 
-void change_last_action(void (*action)(int))
+void change_last_action(void (*action)(byte))
 {
     last_action = action;
 }
@@ -107,7 +122,7 @@ void print_menu()
     }
 }
 
-void navigate_menu(int input) 
+void navigate_menu(byte input) 
 {
     switch (input)
     {
@@ -115,25 +130,23 @@ void navigate_menu(int input)
             main_menu->current_item = main_menu->first_item;
             print_menu();
             break;
-        case -1: // No button
-            break;
-        case 0: // Right Key
+        case NES_RIGHT: // Right Key
             main_menu->current_item = main_menu->current_item->get_child();
             print_menu();
             break;
-        case 1: // Up Key
+        case NES_UP: // Up Key
             main_menu->current_item = main_menu->current_item->get_previous();
             print_menu();
             break;
-        case 2: // Down Key
+        case NES_DOWN: // Down Key
             main_menu->current_item = main_menu->current_item->get_next();
             print_menu();
             break;
-        case 3: // Left Key
+        case NES_LEFT: // Left Key
             main_menu->current_item = main_menu->current_item->get_parent();
             print_menu();
             break;
-        case 4: // Select Key
+        case NES_A: // Select Key
             change_current_action(main_menu->current_item->get_action());
             current_action(-9);
             break;
@@ -143,9 +156,9 @@ void navigate_menu(int input)
 }
 
 // Dialogs
-int selection;
+uint8_t selection;
 
-void save_changes_dialog(int input)
+void save_changes_dialog(byte input)
 {
     switch (input)
     {
@@ -156,21 +169,21 @@ void save_changes_dialog(int input)
             lcd.print(" Yes  No<");
             selection = 0;
             break;
-        case 0: // Right Key
+        case NES_RIGHT: // Right Key
             lcd.setCursor(4, 1);
             lcd.print(" ");
             lcd.setCursor(8, 1);
             lcd.print("<");
             selection = 0;
             break;
-        case 3: // Left Key
+        case NES_LEFT: // Left Key
             lcd.setCursor(8, 1);
             lcd.print(" ");
             lcd.setCursor(4, 1);
             lcd.print("<");
             selection = 1;
             break;
-        case 4: // Select Key
+        case NES_A: // Select Key
             lcd.clear();
             if (selection == 1) 
             {
@@ -195,7 +208,7 @@ void save_changes_dialog(int input)
 byte get_humidity_temperature()
 {
     byte Hum_H, Hum_L, Temp_H, Temp_L, status;
-    unsigned int H_dat, T_dat;
+    uint8_t H_dat, T_dat;
 
     Wire.beginTransmission(HIH6130_address);
     Wire.write(0);
@@ -219,7 +232,7 @@ byte get_humidity_temperature()
 }
 
 // Display the time, humidity, and temperature in a nice way
-void print2digits(int number)
+void print2digits(uint8_t number)
 {
     if (number >= 0 && number < 10)
     {
@@ -232,7 +245,7 @@ void print2digits(int number)
     }
 }
 
-void Display(int input)
+void Display(byte input)
 {
     // digital clock display of the time
 
@@ -241,7 +254,7 @@ void Display(int input)
         case -9:
             lcd.clear();
             break;
-        case 3:
+        case NES_LEFT:
             change_current_action(&navigate_menu);
             current_action(-9);
             break;
@@ -303,7 +316,7 @@ void print3digits(float n)
 
 }
 
-void change_humidity(int input)
+void change_humidity(byte input)
 {
     switch (input)
     {
@@ -316,17 +329,17 @@ void change_humidity(int input)
             break;
         case -1: // No button
             break;
-        case 1: // Up Key
+        case NES_UP: // Up Key
             RH_sp_new++;
             if (RH_sp_new > 100) RH_sp_new = 100;
             print3digits(RH_sp_new);
             break;
-        case 2: // Down Key
+        case NES_DOWN: // Down Key
             RH_sp_new--;
             if (RH_sp_new < 0) RH_sp_new = 0;
             print3digits(RH_sp_new);
             break;
-        case 4: // Select Key
+        case NES_A: // Select Key
             change_current_action(&save_changes_dialog);
             change_last_action(&change_humidity);
             current_action(-9);
@@ -350,7 +363,7 @@ Event_Handler * event_handler = new Event_Handler();
 time_t t;
 tmElements_t tm;
 
-void navigate_events(int input);
+void navigate_events(byte input);
 
 void print_time(time_t t)
 {
@@ -381,7 +394,7 @@ void print_time(tmElements_t tm)
     print2digits((tm.Year+1970) % 100);
 }
 
-void add_event_prompt(int input)
+void add_event_prompt(byte input)
 {
     switch (input)
     {
@@ -398,13 +411,13 @@ void add_event_prompt(int input)
             print_time(tm);
             lcd.setCursor(0, 1);
             lcd.print("RH: ");
-            lcd.print(RH_sp_new, 0);
+            print3digits(RH_sp_new);
             break;
-        case 0: // Right Key
+        case NES_RIGHT: // Right Key
             selection++;
             if (selection > 6) selection = 6;
             break;
-        case 1: // Up Key
+        case NES_UP: // Up Key
             switch (selection)
             {
                 case 1: // hour selected
@@ -435,9 +448,9 @@ void add_event_prompt(int input)
             lcd.setCursor(0, 0);
             print_time(tm);
             lcd.setCursor(4, 1);
-            lcd.print(RH_sp_new, 0);
+            print3digits(RH_sp_new);
             break;
-        case 2: // Down Key
+        case NES_DOWN: // Down Key
             switch (selection)
             {
                 case 1: // hour selected
@@ -468,13 +481,13 @@ void add_event_prompt(int input)
             lcd.setCursor(0, 0);
             print_time(tm);
             lcd.setCursor(4, 1);
-            lcd.print(RH_sp_new, 0);
+            print3digits(RH_sp_new);
             break;
-        case 3: // Left Key
+        case NES_LEFT: // Left Key
             selection--;
             if (selection < 1) selection = 1;
             break;
-        case 4: // Select Key
+        case NES_A: // Select Key
             change_current_action(&save_changes_dialog);
             change_last_action(&add_event_prompt);
             current_action(-9);
@@ -531,9 +544,9 @@ void print_events()
     }
 }
 
-void add_remove_exit_prompt(int input);
+void add_remove_exit_prompt(byte input);
 
-void navigate_events(int input)
+void navigate_events(byte input)
 {
     switch (input)
     {
@@ -541,21 +554,21 @@ void navigate_events(int input)
             event_handler->current_event = event_handler->first_event;
             print_events();
             break;
-        case 1: // Up Key
+        case NES_UP: // Up Key
             if (event_handler->current_event->get_previous())
             {
                 event_handler->current_event = event_handler->current_event->get_previous();
                 print_events();
             }
             break;
-        case 2: // Down Key
+        case NES_DOWN: // Down Key
             if (event_handler->current_event->get_next())
             {
                 event_handler->current_event = event_handler->current_event->get_next();
                 print_events();
             }
             break;
-        case 4: // Select Key - add, remove, or exit
+        case NES_A: // Select Key - add, remove, or exit
             change_current_action(&add_remove_exit_prompt);
             current_action(-9);
             break;
@@ -564,7 +577,7 @@ void navigate_events(int input)
     }
 }
 
-void add_remove_exit_prompt(int input)
+void add_remove_exit_prompt(byte input)
 {
     // Selection: 1 is add, 2 is remove, 3 is exit
     switch (input)
@@ -573,12 +586,12 @@ void add_remove_exit_prompt(int input)
             lcd.clear();
             lcd.print("Add      Remove ");
             lcd.setCursor(0, 1);
-            lcd.print("      Exit      ");
+            lcd.print("      Exit<     ");
             selection = 3;
             break;
         case -1:
             break;
-        case 0: // Right key
+        case NES_RIGHT: // Right key
             if (selection == 1) 
             {
                 lcd.setCursor(3, 0);
@@ -588,7 +601,7 @@ void add_remove_exit_prompt(int input)
                 selection = 2;
             }
             break;
-        case 1: // Up key
+        case NES_UP: // Up key
             if (selection == 3)
             {
                 lcd.setCursor(10, 1);
@@ -598,7 +611,7 @@ void add_remove_exit_prompt(int input)
                 selection = 1;
             }
             break;
-        case 2: // Down key
+        case NES_DOWN: // Down key
             if ((selection == 1) || (selection == 2))
             {
                 lcd.setCursor(3, 0);
@@ -612,7 +625,7 @@ void add_remove_exit_prompt(int input)
             lcd.setCursor(10, 1);
             lcd.print("<");
             break;
-        case 3: // Left key
+        case NES_LEFT: // Left key
             if (selection == 2)
             {
                 lcd.setCursor(15, 0);
@@ -622,7 +635,7 @@ void add_remove_exit_prompt(int input)
                 selection = 1;
             }
             break;
-        case 4: // Select Key
+        case NES_A: // Select Key
             switch (selection)
             {
                 case 1:
@@ -647,50 +660,381 @@ void add_remove_exit_prompt(int input)
     }
 }
 
+uint8_t steps;
+float RH_sp_start;
+float RH_sp_end;
+time_t t_start;
+time_t t_end;
+tmElements_t tm_start;
+tmElements_t tm_end;
+uint8_t start_end_selection; // 1 if selecting start point, 2 if selecting end point
 
+void steps_selection(byte input)
+{
+    switch (input)
+    {
+        case -9:
+            steps = 1;
 
+            lcd.clear();
+            lcd.print("Enter num of steps");
+            lcd.setCursor(0, 1);
+            lcd.print("n: ");
+            lcd.print(steps);
+            break;
+        case NES_UP: // Up Key
+            steps++;
+            lcd.setCursor(3, 1);
+            lcd.print(steps);
+            break;
+        case NES_LEFT: // Down Key
+            steps--;
+            if (steps < 0) steps = 0;
+            lcd.setCursor(3, 1);
+            lcd.print(steps);
+            break;
+        case NES_A: // Select Key
+            change_current_action(&save_changes_dialog);
+            change_last_action(&steps_selection);
+            current_action(-9);
+            break;
+        case 9: // 
+            if (selection == 1)
+            {
+                t = t_start;
+                uint8_t time_step = (t_end - t_start) / steps;
 
+                RH_sp_new = RH_sp_start;
+                uint8_t RH_step = (RH_sp_end - RH_sp_end) / steps;
+
+                for (uint8_t i = 0; i < steps; i++)
+                {
+                    Event * event = new Event();
+                    t = t + time_step;
+                    event->add_time(t);
+
+                    RH_sp_new = RH_sp_new + RH_step;
+                    event->add_set_point(RH_sp_new);
+                    event_handler->add_event(event);
+                }
+            }
+            change_current_action(&navigate_events);
+            current_action(-9);
+            break;
+    }
+}
+
+void event_wizard(byte input)
+{
+    switch (input)
+    {
+        case -9:
+            t_start = t = now();
+            breakTime(t_start, tm_start);
+            breakTime(t, tm);
+            RH_sp_new = 0;
+            selection = 1;
+            start_end_selection = 1;
+
+            lcd.clear();
+            lcd.print("Enter start cond");
+            delay(2000);
+            lcd.clear();
+            print_time(tm);
+            lcd.setCursor(0, 1);
+            lcd.print("RH:");
+            print3digits(RH_sp_new);
+            event_wizard(-1);
+            break;
+        case -8:
+            t_end = t = now();
+            breakTime(t_end, tm_end);
+            breakTime(t, tm);
+            RH_sp_new = 0;
+            selection = 1;
+            start_end_selection = 2;
+
+            lcd.clear();
+            lcd.print("Enter end cond");
+            delay(2000);
+            lcd.clear();
+            print_time(tm);
+            lcd.setCursor(0, 1);
+            lcd.print("RH:");
+            print3digits(RH_sp_new);
+            event_wizard(-1);
+            break;
+        case NES_RIGHT: // Right Key
+            selection++;
+            if (selection > 6) selection = 6;
+            break;
+        case NES_UP: // Up Key
+            switch (selection)
+            {
+                case 1: // hour selected
+                    tm.Hour++;
+                    if (tm.Hour > 24) tm.Hour = 24;
+                    break;
+                case 2: // minute selected
+                    tm.Minute++;
+                    if (tm.Minute > 60) tm.Minute = 60;
+                    break;
+                case 3: // month selected
+                    tm.Month++;
+                    if (tm.Month > 12) tm.Month = 12;
+                    break;
+                case 4: // day selected
+                    tm.Day++;
+                    if (tm.Day > 31) tm.Day = 31;
+                    break;
+                case 5: // year selected
+                    tm.Year++;
+                    break;
+                case 6: // RH selected
+                    RH_sp_new = RH_sp_new + 1;
+                    break;
+                default:
+                    break;
+            }
+            lcd.setCursor(0, 0);
+            print_time(tm);
+            lcd.setCursor(4, 1);
+            print3digits(RH_sp_new);
+            break;
+        case NES_DOWN: // Down Key
+            switch (selection)
+            {
+                case 1: // hour selected
+                    tm.Hour--;
+                    if (tm.Hour < 0) tm.Hour = 0;
+                    break;
+                case 2: // minute selected
+                    tm.Minute--;
+                    if (tm.Minute < 0) tm.Minute = 0;
+                    break;
+                case 3: // month selected
+                    tm.Month--;
+                    if (tm.Month < 0) tm.Month = 0;
+                    break;
+                case 4: // day selected
+                    tm.Day--;
+                    if (tm.Day < 0) tm.Day = 0;
+                    break;
+                case 5: // year selected
+                    tm.Year--;
+                    break;
+                case 6: // RH selected
+                    RH_sp_new = RH_sp_new - 1;
+                    break;
+                default:
+                    break;
+            }
+
+            lcd.setCursor(0, 0);
+            print_time(tm);
+            lcd.setCursor(4, 1);
+            print3digits(RH_sp_new);
+            break;
+        case NES_LEFT: // Left Key
+            selection--;
+            if (selection < 1) selection = 1;
+            break;
+        case NES_A: // Select Key
+            change_current_action(&save_changes_dialog);
+            change_last_action(&event_wizard);
+            current_action(-9);
+            break;
+        case 9:
+            if (start_end_selection == 1)
+            {
+                if (selection == 1)
+                {
+                    t_start = makeTime(tm);
+                    RH_sp_start = RH_sp_new;
+                    event_wizard(-8);
+                }
+                else 
+                {
+                    change_current_action(&navigate_menu);
+                    current_action(-9);
+                }
+            }
+            else if (start_end_selection == 2)
+            {
+                if (selection == 1)
+                {
+                    t_end = makeTime(tm);
+                    RH_sp_end = RH_sp_new;
+                    change_current_action(&steps_selection);
+                    current_action(-9);
+                }
+                else 
+                {
+                    change_current_action(&navigate_menu);
+                    current_action(-9);
+                }
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void manual_valve(byte input)
+{
+    switch (input)
+    {
+        case -9:
+            valve1_sp = 0;
+            lcd.clear();
+            lcd.print("Valve 1");
+            lcd.setCursor(0, 1);
+            lcd.print("Pos:");
+            print3digits(valve1_sp);
+            break;
+
+        case NES_UP: // Up Key
+            valve1_sp++;
+            if (valve1_sp > 100) valve1_sp = 100;
+            check_valves();
+            lcd.setCursor(4, 1);
+            print3digits(valve1_level);
+            break;
+        case NES_DOWN: // Down Key
+            valve1_sp--;
+            if (valve1_sp < 0) valve1_sp = 0;
+            check_valves();
+            lcd.setCursor(4, 1);
+            print3digits(valve1_level);
+            break;
+        case NES_LEFT: // Left Key
+            change_current_action(&navigate_menu);
+            current_action(-9);
+            break;
+        default:
+            break;
+    }
+
+}
 
 void setup()
 {
-    setSyncProvider(RTC.get);
+    // Initialize LCD screen
     lcd.begin(16, 2);
     lcd.createChar(0, left_arrow);
+
+
+    // Initialize RTC
+    setSyncProvider(RTC.get);
+    
+    // Initialize I2C library for communication with Sensor and RTC
+    Wire.begin();
+
     lcd.setCursor(0, 0);
     lcd.print("Humidity Control");
     lcd.setCursor(0, 1);
     lcd.print("by Michal Nicpon");
     delay(3000);
-    Wire.begin();
-
+    
+    
+    /*
     Item * display_item = new Item("Display         ");
     display_item->add_action(&Display);
     Item * change_humidity_item = new Item("Change Humidity ");
     change_humidity_item->add_action(&change_humidity);
     Item * events_item = new Item("Events          ");
     events_item->add_action(&navigate_events);
+    Item * event_wizard_item = new Item("Event Wizard    ");
+    event_wizard_item->add_action(&event_wizard);
+    Item * manual_mode_item = new Item("Manual Mode     ");
+    manual_mode_item->add_action(&manual_valve);
     
     main_menu->add_item_down(display_item);
     main_menu->add_item_down(change_humidity_item);
     main_menu->add_item_down(events_item);
+    main_menu->add_item_down(event_wizard_item);
+    main_menu->add_item_down(manual_mode_item);
+    */
     
     pinMode(valve1_pin, OUTPUT);
     pinMode(valve2_pin, OUTPUT);
 
+    lcd.clear();
+    lcd.print("Starting...");
+    delay(3000);
     change_current_action(&navigate_menu);
     current_action(-9);
+
+    // Initialize SD card
+    pinMode(10, OUTPUT);
+
+    if (!SD.begin(10))
+    {
+        lcd.setCursor(0, 0);
+        lcd.print("Card failed, or not present");
+        delay(3000);
+        return;
+    }
+
+    lcd.setCursor(0, 0);
+    lcd.print("Card initialized.");
+    if (SD.exists("data.log"))
+    {
+        SD.remove("data.log");
+    }
+    File dataFile = SD.open("data.log", FILE_WRITE);
+    if (dataFile)
+    {
+        dataFile.println("Time,RH,T_C");
+        dataFile.close();
+    }
+    else
+    {
+    }
+
+    delay(3000);
 }
-
-
 
 void loop()
 {
-    check_valves();
+    // check_valves();
 
-    key = check_button();
+    /*
+    byte key = nintendo.buttons();
     current_action(key);
-
-    delay(100);
+    
+    
+    String dataString = "";
+    status = get_humidity_temperature();
+    dataString += now();
+    dataString += ",";
+    dataString += RH;
+    dataString += T_C;
+    */
+    
+    File dataFile = SD.open("data2.log", FILE_WRITE);
+    if (dataFile)
+    {
+        dataFile.println("1");
+        dataFile.close();
+        lcd.clear();
+        lcd.write("Write Successful");
+        delay(1000);
+        lcd.setCursor(0, 1);
+        lcd.print(freeMemory());
+        
+    }
+    else
+    {
+        lcd.clear();
+        lcd.print("Error");
+        delay(1000);
+        lcd.setCursor(0, 1);
+        lcd.print(freeMemory());
+    }
+    
+    
+    
+    delay(1000);
 }
-
 
