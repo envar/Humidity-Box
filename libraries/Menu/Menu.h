@@ -1,18 +1,20 @@
 #include "Arduino.h"
+#include "../Enums/Enums.h"
+
+#define SCREEN_LENGTH 16
 
 class Item
 {
     private:
-        static const int screen_len = 16;
         char * title;
         Item * previous_item;
         Item * next_item;
         Item * parent_item;
         Item * child_item;
-        typedef void (*function)(int);
+        typedef void (*function)(ModeOption, uint8_t);
 
     public:
-        void (*item_function)(int);
+        void (*item_function)(ModeOption, uint8_t);
         Item(const char * item_name);
         ~Item();
         void add_previous(Item * previous);
@@ -24,9 +26,9 @@ class Item
         Item * get_parent();
         Item * get_child();
         char * get_title();
-        void add_action(void (*myfunction)(int));
+        void add_action(void (*myfunction)(ModeOption, uint8_t));
         function get_action();
-        void execute(int input);
+        void execute(ModeOption mode, uint8_t input);
 };
 
 Item::Item(const char * item_name)
@@ -37,8 +39,9 @@ Item::Item(const char * item_name)
     parent_item = 0;
     child_item = 0;
 
-    title = new char[screen_len +1]();
-    for (int i = 0; i < screen_len; i++)
+    
+    title = new char[SCREEN_LENGTH + 1]();
+    for (uint8_t i = 0; i < SCREEN_LENGTH; i++)
     {
         if (item_name[i] == '\0')
         {
@@ -47,6 +50,9 @@ Item::Item(const char * item_name)
 
         title[i] = item_name[i];
     }
+    
+
+    // title = item_name;
 }
 
 Item::~Item()
@@ -105,7 +111,7 @@ char * Item::get_title()
 }
 
 
-void Item::add_action(void (*myfunction)(int))
+void Item::add_action(void (*myfunction)(ModeOption, uint8_t))
 {
     item_function = myfunction;
 }
@@ -115,19 +121,18 @@ Item::function Item::get_action()
     return item_function;
 }
 
-void Item::execute(int input=-1)
+void Item::execute(ModeOption mode, uint8_t input)
 {
-    item_function(input);
+    item_function(mode, input);
 }
 
 class Menu
 {
 private:
-    static const int screen_len = 16;
     int item_counter;
     // void save_changes_dialog(int);
     bool is_empty;
-    int selection;
+    uint8_t selection;
 public:
     Menu();
     ~Menu();

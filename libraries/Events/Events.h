@@ -1,14 +1,12 @@
-#include "Time.h"
-
 class Event
 {
     private:
         Event * previous_event;
         Event * next_event;
         float set_point;
-        time_t event_time;
+        ctime_t event_time;
         bool save_event_dialog();
-        
+
     public:
         Event();
         ~Event();
@@ -16,11 +14,11 @@ class Event
         void add_previous(Event * previous);
         Event * get_next();
         Event * get_previous();
-        void add_time(time_t t);
-        time_t get_time();
+        void add_time(ctime_t t);
+        ctime_t get_time();
         void add_set_point(float sp);
         float get_set_point();
-        int check();
+        // int check();
 };
 
 Event::Event()
@@ -53,12 +51,12 @@ Event * Event::get_previous()
     return previous_event;
 }
 
-void Event::add_time(time_t t)
+void Event::add_time(ctime_t t)
 {
     event_time = t;
 }
 
-time_t Event::get_time()
+ctime_t Event::get_time()
 {
     return event_time;
 }
@@ -79,7 +77,7 @@ class Event_Handler
     private:
         Event * last_event;
         Event * events;
-        int event_counter;
+        uint8_t event_counter;
     public:
         Event_Handler();
         Event * first_event;
@@ -118,11 +116,11 @@ void Event_Handler::add_event(Event * event)
     {
         current_event = first_event;
 
-        int n = event_counter;
+        uint8_t n = event_counter;
 
-        for (int i = 0; i < n; i++)
+        for (uint8_t i = 0; i < n; i++)
         {
-            if (event->get_time() < current_event->get_time())
+            if (unixTime(event->get_time()) < unixTime(current_event->get_time()))
             {
                 first_event->add_previous(event);
                 event->add_next(first_event);
@@ -130,7 +128,7 @@ void Event_Handler::add_event(Event * event)
                 event_counter++;
                 break;
             }
-            else if (event->get_time() > last_event->get_time())
+            else if (unixTime(event->get_time()) > unixTime(last_event->get_time()))
             {
                 last_event->add_next(event);
                 event->add_previous(last_event);
@@ -140,7 +138,7 @@ void Event_Handler::add_event(Event * event)
             }
             else
             {
-                if (event->get_time() < current_event->get_next()->get_time())
+                if (unixTime(event->get_time()) < unixTime(current_event->get_next()->get_time()))
                 {
                     current_event->get_next()->add_previous(event);
                     event->add_next(current_event->get_next());
@@ -183,7 +181,7 @@ void Event_Handler::remove_event(Event * event)
 
 void Event_Handler::remove_all_events()
 {
-    while (event_counter != 0)
+    while (event_counter > 0)
     {
         remove_event(current_event);
     }

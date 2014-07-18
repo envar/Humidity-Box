@@ -40,15 +40,14 @@ class NESpad {
 
   public:
     NESpad();
-    NESpad(int strobe, int clock, int data);
+    NESpad(uint8_t strobe, uint8_t clock, uint8_t data);
     uint8_t buttons();
 
   private:
     void strobe();
     uint8_t shiftin();
-    int m_strobe, m_clock, m_data;
+    uint8_t m_strobe, m_clock, m_data;
 
 };
 
 #endif
-

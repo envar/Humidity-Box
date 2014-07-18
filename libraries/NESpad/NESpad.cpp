@@ -5,7 +5,7 @@
   Version: 1.2 (05/25/2009) - put pin numbers in constructor (Pascal Hahn)
   Version: 1.1 (09/22/2008) - fixed compilation errors in arduino 0012 (Rob Duarte)
   Version: 1.0 (09/20/2007) - Created (Rob Duarte)
-  
+
   This file is part of NESpad.
 
   NESpad is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
   GNU Lesser General Public License for more details.
 
   You should have received a copy of the GNU Lesser General Public License
-  along with NESpad.  If not, see <http://www.gnu.org/licenses/>.  
+  along with NESpad.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "NESpad.h"
@@ -31,14 +31,14 @@
 // see readme.txt for game pad pinout
 
 // -- actually, let's just eliminate this since people seem to be having
-// -- trouble with it.. stick with specifying the pin numbers as 
+// -- trouble with it.. stick with specifying the pin numbers as
 // -- arguments to the constructor
 
 // NESpad::NESpad() {
 //     NESpad::NESpad(2,3,4);
 // }
 
-NESpad::NESpad(int strobe, int clock, int data)
+NESpad::NESpad(uint8_t strobe, uint8_t clock, uint8_t data)
   : m_strobe (strobe),
   m_clock (clock),
   m_data (data)
