@@ -4,7 +4,7 @@ class Event
         Event * previous_event;
         Event * next_event;
         float set_point;
-        ctime_t event_time;
+        time_t event_time;
         bool save_event_dialog();
 
     public:
@@ -14,8 +14,8 @@ class Event
         void add_previous(Event * previous);
         Event * get_next();
         Event * get_previous();
-        void add_time(ctime_t t);
-        ctime_t get_time();
+        void add_time(time_t t);
+        time_t get_time();
         void add_set_point(float sp);
         float get_set_point();
         // int check();
@@ -51,12 +51,12 @@ Event * Event::get_previous()
     return previous_event;
 }
 
-void Event::add_time(ctime_t t)
+void Event::add_time(time_t t)
 {
     event_time = t;
 }
 
-ctime_t Event::get_time()
+time_t Event::get_time()
 {
     return event_time;
 }

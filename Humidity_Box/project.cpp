@@ -1,7 +1,6 @@
 #include "Arduino.h"
 #include "avr/pgmspace.h"
-#include "ctype.h"
-#include "ctime.h"
+// #include "ctype.h"
 #include "EEPROM.h"
 #include "LiquidCrystal.h"
 #include "SD.h"
@@ -98,8 +97,9 @@ byte bcdToDec(byte val)
   return ( (val/16*10) + (val%16) );
 }
 
-void getTimeDS1307(ctime_t * current)
+time_t getTimeDS1307()
 {
+    tmElements_t t;
     // Reset the register pointer
     Wire.beginTransmission(DS1307RTC_address);
     Wire.write(0);
@@ -108,20 +108,23 @@ void getTimeDS1307(ctime_t * current)
     Wire.requestFrom(DS1307RTC_address, 7);
    
     // A few of these need masks because certain bits are control bits
-    current->second     = bcdToDec(Wire.read() & 0x7f);
-    current->minute     = bcdToDec(Wire.read());
-    current->hour       = bcdToDec(Wire.read() & 0x3f);  // Need to change this if 12 hour am/pm
-    current->dayOfWeek  = bcdToDec(Wire.read());
-    current->dayOfMonth = bcdToDec(Wire.read());
-    current->month      = bcdToDec(Wire.read());
-    current->year       = bcdToDec(Wire.read());
+    t.Second     = bcdToDec(Wire.read() & 0x7f);
+    t.Minute     = bcdToDec(Wire.read());
+    t.Hour       = bcdToDec(Wire.read() & 0x3f);  // Need to change this if 12 hour am/pm
+    t.Wday       = bcdToDec(Wire.read());
+    t.Day        = bcdToDec(Wire.read());
+    t.Month      = bcdToDec(Wire.read());
+    t.Year       = bcdToDec(Wire.read());
+
+    return makeTime(t);
+
 }
 
 // Valve position
 uint8_t valve1_pin = 3;  // Dry stream;
-uint8_t valve1_pos = 0; // this should be 0 - 255
+uint8_t valve1_pos = 150; // this should be 0 - 255
 uint8_t valve2_pin = 9;  // Wet stream;
-uint8_t valve2_pos = 0;
+uint8_t valve2_pos = 150;
 
 void change_valve_position(uint8_t sp)
 {
@@ -198,25 +201,32 @@ void print3digits(float n)
     }
 }
 
-void print_date_time(ctime_t t)
-{
-    print2digits(t.hour);
+void print_date_time(time_t t) {
+    tmElements_t tm;
+
+    breakTime(t, &tm);
+
+    print2digits(tm.Hour);
     lcd.print(":");
-    print2digits(t.minute);
+    print2digits(tm.Minute);
     lcd.print(" ");
-    print2digits(t.month);
+    print2digits(tm.Month);
     lcd.print("/");
-    print2digits(t.dayOfMonth);
+    print2digits(tm.Day);
     lcd.print("/");
-    print2digits(t.year);
+    print2digits(tm.Year);
 }
 
-void print_time(ctime_t t) {
-    print2digits(t.hour);
+void print_time(time_t t) {
+    tmElements_t tm;
+
+    breakTime(t, &tm);
+
+    print2digits(tm.Hour);
     lcd.print(":");
-    print2digits(t.minute);
+    print2digits(tm.Minute);
     lcd.print(":");
-    print2digits(t.second);
+    print2digits(tm.second);
 }
 
 // initiate menu
@@ -345,7 +355,7 @@ void save_changes_dialog(ModeOption mode, uint8_t input)
 
 void Display(ModeOption mode, uint8_t input)
 {
-    ctime_t now;
+    time_t now;
 
     switch (mode)
     {
@@ -355,8 +365,7 @@ void Display(ModeOption mode, uint8_t input)
         case LOOP:
             switch (input)
             {
-                case NES_LEFT:
-                case NES_B:
+                case NES_LEFT: case NES_B:
                     change_current_action(&navigate_menu);
                     current_action(INIT, 0);
                     break;
@@ -456,14 +465,16 @@ void navigate_events(ModeOption mode, uint8_t input);
 
 void add_event_prompt(ModeOption mode, uint8_t input)
 {
-    static ctime_t event_t;
+    static tmElements_t event_t;
     static uint8_t selection;
     static float RH_sp_new;
 
     switch (mode)
     {
         case INIT:
-            getTimeDS1307(&event_t);
+            time_t now;
+            getTimeDS1307(&now);
+            breakTime(now, &event_t);
             selection = 1;
             RH_sp_new = 0;
 
@@ -483,24 +494,24 @@ void add_event_prompt(ModeOption mode, uint8_t input)
                 case NES_UP: // Up Key
                     switch (selection)
                     {
-                        case 1: // hour selected
-                            event_t.hour++;
-                            if (event_t.hour > 24) event_t.hour = 24;
+                        case 1: // Hour selected
+                            event_t.Hour++;
+                            if (event_t.Hour > 24) event_t.Hour = 24;
                             break;
-                        case 2: // minute selected
-                            event_t.minute++;
-                            if (event_t.minute > 60) event_t.minute = 60;
+                        case 2: // Minute selected
+                            event_t.Minute++;
+                            if (event_t.Minute > 60) event_t.Minute = 60;
                             break;
-                        case 3: // month selected
-                            event_t.month++;
-                            if (event_t.month > 12) event_t.month = 12;
+                        case 3: // Month selected
+                            event_t.Month++;
+                            if (event_t.Month > 12) event_t.Month = 12;
                             break;
                         case 4: // day selected
-                            event_t.dayOfMonth++;
-                            if (event_t.dayOfMonth > 31) event_t.dayOfMonth = 31;
+                            event_t.Day++;
+                            if (event_t.Day > 31) event_t.Day = 31;
                             break;
-                        case 5: // year selected
-                            event_t.year++;
+                        case 5: // Year selected
+                            event_t.Year++;
                             break;
                         case 6: // RH selected
                             if (RH_sp_new < 100) RH_sp_new++;
@@ -516,24 +527,24 @@ void add_event_prompt(ModeOption mode, uint8_t input)
                 case NES_DOWN: // Down Key
                     switch (selection)
                     {
-                        case 1: // hour selected
-                            event_t.hour--;
-                            if (event_t.hour < 0) event_t.hour = 0;
+                        case 1: // Hour selected
+                            event_t.Hour--;
+                            if (event_t.Hour < 0) event_t.Hour = 0;
                             break;
-                        case 2: // minute selected
-                            event_t.minute--;
-                            if (event_t.minute < 0) event_t.minute = 0;
+                        case 2: // Minute selected
+                            event_t.Minute--;
+                            if (event_t.Minute < 0) event_t.Minute = 0;
                             break;
-                        case 3: // month selected
-                            event_t.month--;
-                            if (event_t.month < 0) event_t.month = 0;
+                        case 3: // Month selected
+                            event_t.Month--;
+                            if (event_t.Month < 0) event_t.Month = 0;
                             break;
                         case 4: // day selected
-                            event_t.dayOfMonth--;
-                            if (event_t.dayOfMonth < 0) event_t.dayOfMonth = 0;
+                            event_t.Day--;
+                            if (event_t.Day < 0) event_t.Day = 0;
                             break;
-                        case 5: // year selected
-                            event_t.year--;
+                        case 5: // Year selected
+                            event_t.Year--;
                             break;
                         case 6: // RH selected
                             if (RH_sp_new > 0) RH_sp_new--;
@@ -562,7 +573,8 @@ void add_event_prompt(ModeOption mode, uint8_t input)
         case RET_YES:
             {
             Event * event = new Event();
-            event->add_time(event_t);
+            time_t t = makeTime(event_t);
+            event->add_time(t);
             event->add_set_point(RH_sp_new);
             event_handler->add_event(event);
 
@@ -803,9 +815,9 @@ void event_wizard(ModeOption mode, uint8_t input)
     static uint8_t RH_sp_end;
     static uint8_t RH_sp_new;
 
-    static ctime_t t_start;
-    static ctime_t t_end;
-    static ctime_t t;
+    static time_t t_start;
+    static time_t t_end;
+    static tmElements_t t;
 
     static uint8_t selection;
     static LoopNum loop;
@@ -838,24 +850,24 @@ void event_wizard(ModeOption mode, uint8_t input)
                 case NES_UP: // Up Key
                     switch (selection)
                     {
-                        case 1: // hour selected
-                            t.hour++;
-                            if (t.hour > 24) t.hour = 24;
+                        case 1: // Hour selected
+                            t.Hour++;
+                            if (t.Hour > 24) t.Hour = 24;
                             break;
-                        case 2: // minute selected
-                            t.minute++;
-                            if (t.minute > 60) t.minute = 60;
+                        case 2: // Minute selected
+                            t.Minute++;
+                            if (t.Minute > 60) t.Minute = 60;
                             break;
-                        case 3: // month selected
-                            t.month++;
-                            if (t.month > 12) t.month = 12;
+                        case 3: // Month selected
+                            t.Month++;
+                            if (t.Month > 12) t.Month = 12;
                             break;
                         case 4: // day selected
-                            t.dayOfMonth++;
-                            if (t.dayOfMonth > 31) t.dayOfMonth = 31;
+                            t.Day++;
+                            if (t.Day > 31) t.Day = 31;
                             break;
-                        case 5: // year selected
-                            t.year++;
+                        case 5: // Year selected
+                            t.Year++;
                             break;
                         case 6: // RH selected
                             RH_sp_new++;
@@ -871,24 +883,24 @@ void event_wizard(ModeOption mode, uint8_t input)
                 case NES_DOWN: // Down Key
                     switch (selection)
                     {
-                        case 1: // hour selected
-                            t.hour--;
-                            if (t.hour < 0) t.hour = 0;
+                        case 1: // Hour selected
+                            t.Hour--;
+                            if (t.Hour < 0) t.Hour = 0;
                             break;
-                        case 2: // minute selected
-                            t.minute--;
-                            if (t.minute < 0) t.minute = 0;
+                        case 2: // Minute selected
+                            t.Minute--;
+                            if (t.Minute < 0) t.Minute = 0;
                             break;
-                        case 3: // month selected
-                            t.month--;
-                            if (t.month < 0) t.month = 0;
+                        case 3: // Month selected
+                            t.Month--;
+                            if (t.Month < 0) t.Month = 0;
                             break;
                         case 4: // day selected
-                            t.dayOfMonth--;
-                            if (t.dayOfMonth < 0) t.dayOfMonth = 0;
+                            t.Day--;
+                            if (t.Day < 0) t.Day = 0;
                             break;
-                        case 5: // year selected
-                            t.year--;
+                        case 5: // Year selected
+                            t.Year--;
                             break;
                         case 6: // RH selected
                             RH_sp_new--;
@@ -918,11 +930,9 @@ void event_wizard(ModeOption mode, uint8_t input)
         case RET_YES:
             if (loop == LOOP1)
             {
-                t_start = t;
+                t_start = makeTime(t);
                 RH_sp_start = RH_sp_new;
 
-                t_end = t_start;
-                RH_sp_new = RH_sp_start;
                 lcd.clear();
                 lcd.print(F("Enter end cond"));
                 delay(2000);
@@ -936,7 +946,7 @@ void event_wizard(ModeOption mode, uint8_t input)
             }
             else if (loop == LOOP2)
             {
-                t_end = t;
+                t_end = makeTime(t);
                 RH_sp_end = RH_sp_new;
                 change_current_action(&steps_selection);
                 current_action(INIT, 0);
@@ -949,28 +959,24 @@ void event_wizard(ModeOption mode, uint8_t input)
         case RET_EXEC:
             {
             uint8_t steps = input; // I cheated here to pass in steps from step selection dialog
-
-            uint32_t ut_start = unixTime(t_start);
-            uint32_t ut_end = unixTime(t_end);
-            uint32_t ut = ut_start;
-
-            uint16_t time_step = (ut_end - ut_start) / steps; 
-
-            uint8_t RH_sp_new = RH_sp_start;
+            t = t_start;
+            RH_sp_new = RH_sp_start;
+            uint16_t time_step = (t_end - t_start) / steps; 
             uint8_t RH_step = (RH_sp_end - RH_sp_start) / steps;
 
             for (uint8_t i = 0; i < steps; i++) {
                 Event * event = new Event();
-                ut = ut + time_step;
-                event->add_time(makeTime(ut));
+                t += time_step;
+                event->add_time(t);
 
-                RH_sp_new = RH_sp_new + RH_step;
+                RH_sp_new += RH_step;
                 event->add_set_point(RH_sp_new);
                 event_handler->add_event(event);
             }
 
             change_current_action(&navigate_events);
             current_action(INIT, 0);
+
             }
             break;
         default:
@@ -1102,6 +1108,7 @@ void manual_valve(ModeOption mode, uint8_t input)
             lcd.clear();
             lcd.print("RH:");
             print3digits(RH);
+            lcd.print(" ");
             lcd.setCursor(0, 1);
             lcd.print("V1:");
             print3digits(valve1_pos);
@@ -1134,12 +1141,15 @@ void manual_valve(ModeOption mode, uint8_t input)
                 case NES_A: case NES_B:
                     change_current_action(&navigate_menu);
                     current_action(INIT, 0);
+                    return;
+                    break;
                 default:
                     break;
             }
 
             lcd.setCursor(3, 0);
             print3digits(RH);
+            lcd.print(" ");
 
             analogWrite(valve1_pin, valve1_pos);
             analogWrite(valve2_pin, valve2_pos);
@@ -1233,18 +1243,17 @@ void setup()
 
 void loop()
 {
-    static ctime_t now;
+    static time_t now;
+    static tmElements now_tm
     getTimeDS1307(&now);
     
-    /*
     if (!event_handler->is_empty()) {
         if (now > event_handler->first_event->get_time()) {
-            RH_sp = event_handler->first_event->get_set_point();
+            uint8_t RH_sp = event_handler->first_event->get_set_point();
+            change_valve_position(RH_sp);
             event_handler->remove_event(event_handler->first_event);
-            //change_valve_position(RH_sp);
         }
     }
-    */
 
     uint8_t key = nintendo.buttons();
     current_action(LOOP, key);
