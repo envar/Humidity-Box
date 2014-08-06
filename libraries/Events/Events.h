@@ -3,7 +3,7 @@ class Event
     private:
         Event * previous_event;
         Event * next_event;
-        float set_point;
+        uint8_t set_point;
         time_t event_time;
         bool save_event_dialog();
 
@@ -16,8 +16,8 @@ class Event
         Event * get_previous();
         void add_time(time_t t);
         time_t get_time();
-        void add_set_point(float sp);
-        float get_set_point();
+        void add_set_point(uint8_t sp);
+        uint8_t get_set_point();
         // int check();
 };
 
@@ -61,12 +61,12 @@ time_t Event::get_time()
     return event_time;
 }
 
-void Event::add_set_point(float sp)
+void Event::add_set_point(uint8_t sp)
 {
     set_point = sp;
 }
 
-float Event::get_set_point()
+uint8_t Event::get_set_point()
 {
     return set_point;
 }
@@ -120,7 +120,7 @@ void Event_Handler::add_event(Event * event)
 
         for (uint8_t i = 0; i < n; i++)
         {
-            if (unixTime(event->get_time()) < unixTime(current_event->get_time()))
+            if (event->get_time() < current_event->get_time())
             {
                 first_event->add_previous(event);
                 event->add_next(first_event);
@@ -128,7 +128,7 @@ void Event_Handler::add_event(Event * event)
                 event_counter++;
                 break;
             }
-            else if (unixTime(event->get_time()) > unixTime(last_event->get_time()))
+            else if (event->get_time() > last_event->get_time())
             {
                 last_event->add_next(event);
                 event->add_previous(last_event);
@@ -138,7 +138,7 @@ void Event_Handler::add_event(Event * event)
             }
             else
             {
-                if (unixTime(event->get_time()) < unixTime(current_event->get_next()->get_time()))
+                if (event->get_time() < current_event->get_next()->get_time())
                 {
                     current_event->get_next()->add_previous(event);
                     event->add_next(current_event->get_next());
@@ -161,7 +161,7 @@ void Event_Handler::remove_event(Event * event)
     if(event->get_previous() == 0) // Check if this is the first event
     {
         event->get_next()->add_previous(0);
-        current_event = event->get_next();
+        first_event = current_event = event->get_next();
     }
     else if ((event->get_previous() != 0) && (event->get_next() != 0)) // Check if event in middle
     {
@@ -172,7 +172,7 @@ void Event_Handler::remove_event(Event * event)
     else if (event->get_next() == 0) // Check if event is the last event
     {
         event->get_previous()->add_next(0);
-        current_event = event->get_previous();
+        last_event = current_event = event->get_previous();
     }
 
     delete event;
@@ -181,6 +181,7 @@ void Event_Handler::remove_event(Event * event)
 
 void Event_Handler::remove_all_events()
 {
+    current_event = first_event;
     while (event_counter > 0)
     {
         remove_event(current_event);
