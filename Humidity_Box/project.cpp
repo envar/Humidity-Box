@@ -304,13 +304,19 @@ void navigate_menu(ModeOption mode, uint8_t input)
                     main_menu->current_item = main_menu->current_item->get_next();
                     print_menu();
                     break;
-                case NES_LEFT: // Left Key
+                case NES_LEFT: case NES_B: // Left Key
                     main_menu->current_item = main_menu->current_item->get_parent();
                     print_menu();
                     break;
                 case NES_A: // Select Key
-                    change_current_action(main_menu->current_item->get_action());
-                    current_action(INIT, 0);
+                    if (main_menu->current_item->has_action()) {
+                        change_current_action(main_menu->current_item->get_action());
+                        current_action(INIT, 0);
+                    }
+                    else {
+                        main_menu->current_item = main_menu->current_item->get_child();
+                        print_menu();
+                    }
                     break;
                 default:
                     break;
@@ -440,6 +446,7 @@ void change_humidity(ModeOption mode, uint8_t input)
 
         case RET_YES:
             RH_sp = RH_sp_new;
+            change_valve_position(RH_sp);
             change_current_action(&navigate_menu);
             current_action(INIT, 0);
             break;
@@ -1217,6 +1224,7 @@ void manual_valve(ModeOption mode, uint8_t input)
 
 }
 
+
 void setup()
 {
     // Initialize LCD screen
@@ -1251,11 +1259,13 @@ void setup()
     manual_mode_item->add_action(&manual_valve);
     Item * calibration_item = new Item("Calibration Mode");
     calibration_item->add_action(&calibration);
-    
+    Item * advanced_item = new Item("Advanced        ");
+
     main_menu->add_item_down(display_item);
-    main_menu->add_item_down(change_humidity_item);
-    main_menu->add_item_down(events_item);
     main_menu->add_item_down(event_wizard_item);
+    main_menu->add_item_down(advanced_item);
+    main_menu->add_item_right(change_humidity_item);
+    main_menu->add_item_down(events_item);
     main_menu->add_item_down(remove_all_item);
     main_menu->add_item_down(manual_mode_item);
     main_menu->add_item_down(calibration_item);

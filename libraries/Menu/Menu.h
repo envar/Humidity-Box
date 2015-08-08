@@ -12,6 +12,7 @@ class Item
         Item * parent_item;
         Item * child_item;
         typedef void (*function)(ModeOption, uint8_t);
+        bool hasaction;
 
     public:
         void (*item_function)(ModeOption, uint8_t);
@@ -28,6 +29,7 @@ class Item
         char * get_title();
         void add_action(void (*myfunction)(ModeOption, uint8_t));
         function get_action();
+        bool has_action();
         void execute(ModeOption mode, uint8_t input);
 };
 
@@ -38,7 +40,7 @@ Item::Item(const char * item_name)
     next_item = 0;
     parent_item = 0;
     child_item = 0;
-
+    hasaction = false;
     
     title = new char[SCREEN_LENGTH + 1]();
     for (uint8_t i = 0; i < SCREEN_LENGTH; i++)
@@ -114,11 +116,17 @@ char * Item::get_title()
 void Item::add_action(void (*myfunction)(ModeOption, uint8_t))
 {
     item_function = myfunction;
+    hasaction = true;
 }
 
 Item::function Item::get_action()
 {
     return item_function;
+}
+
+bool Item::has_action()
+{
+    return hasaction;
 }
 
 void Item::execute(ModeOption mode, uint8_t input)
